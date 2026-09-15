@@ -1,4 +1,3 @@
-```markdown
 # Workshop: De Bare Metal a Cloud Infrastructure as Code (IaC)
 
 Este repositorio contiene los materiales, guías y código fuente para el taller práctico de Infraestructura de TI, diseñado para guiar a los estudiantes en la transición desde entornos físicos (bare metal) hacia la virtualización y la automatización en la nube mediante Infraestructura como Código (IaC).
