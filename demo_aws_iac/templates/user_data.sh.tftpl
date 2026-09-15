@@ -1,0 +1,60 @@
+#!/bin/bash
+apt-get update -y
+apt-get install -y python3 python3-pip python3-psycopg2 python3-flask
+
+cat << 'PYTHON' > /home/ubuntu/app.py
+from flask import Flask
+import psycopg2
+import datetime
+
+app = Flask(__name__)
+
+# Las variables son inyectadas por la funcion templatefile de Terraform
+DB_HOST = "${db_host}"
+DB_NAME = "${db_name}"
+DB_USER = "${db_user}"
+DB_PASS = "${db_pass}"
+S3_URL  = "${s3_url}"
+
+def init_db():
+    try:
+        conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS visitas (id SERIAL PRIMARY KEY, fecha TIMESTAMP);")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(e)
+
+@app.route('/')
+def index():
+    conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
+    cur = conn.cursor()
+    cur.execute("INSERT INTO visitas (fecha) VALUES (%s);", (datetime.datetime.now(),))
+    conn.commit()
+    cur.execute("SELECT COUNT(*) FROM visitas;")
+    count = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    return f'''
+    <html>
+        <head><title>Demo AWS IaC</title></head>
+        <body style="font-family: Arial, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9;">
+            <h1 style="color: #232f3e;">🚀 Aplicación Desplegada con Terraform</h1>
+            <div style="background: white; border-radius: 10px; padding: 20px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                <h2>Registros guardados en RDS (PostgreSQL): <span style="color: #ff9900;">{count}</span></h2>
+                <p>Imagen cargada automáticamente desde S3:</p>
+                <img src="{S3_URL}" alt="S3 Image" style="max-width: 400px; border-radius: 8px; margin-top: 10px;"/>
+            </div>
+        </body>
+    </html>
+    '''
+
+if __name__ == '__main__':
+    init_db()
+    app.run(host='0.0.0.0', port=80)
+PYTHON
+
+python3 /home/ubuntu/app.py &
